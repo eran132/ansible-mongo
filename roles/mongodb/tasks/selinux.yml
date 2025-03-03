@@ -1,0 +1,12 @@
+---
+- name: Check SELinux status
+  ansible.builtin.command: getenforce
+  register: selinux_status
+  changed_when: false
+  failed_when: false
+
+- name: Configure SELinux for MongoDB
+  ansible.builtin.command: "setsebool -P mongod_bind_all_unreserved_ports 1"
+  when: selinux_status.stdout == "Enforcing"
+  changed_when: true
+  failed_when: false

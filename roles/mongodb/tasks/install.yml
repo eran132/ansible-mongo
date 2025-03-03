@@ -1,0 +1,57 @@
+---
+# RedHat-specific tasks
+- name: Add MongoDB repo (RedHat)
+  ansible.builtin.copy:
+    dest: /etc/yum.repos.d/mongodb-org-{{ mongodb_version }}.repo
+    content: |
+      [mongodb-org-{{ mongodb_version }}]
+      name=MongoDB Repository
+      baseurl=https://repo.mongodb.org/yum/redhat/8/mongodb-org/{{ mongodb_version }}/x86_64/
+      gpgcheck=1
+      enabled=1
+      gpgkey=https://www.mongodb.org/static/pgp/server-{{ mongodb_version }}.asc
+    owner: root
+    group: root
+    mode: '0644'
+  when: is_redhat
+
+- name: Import MongoDB GPG key (RedHat)
+  ansible.builtin.rpm_key:
+    state: present
+    key: https://www.mongodb.org/static/pgp/server-{{ mongodb_version }}.asc
+  when: is_redhat
+
+- name: Install MongoDB packages (RedHat)
+  ansible.builtin.yum:
+    name: mongodb-org
+    state: present
+  when: is_redhat
+
+# Debian-specific tasks
+- name: Add MongoDB repo (Debian)
+  ansible.builtin.apt_repository:
+    repo: "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/{{ mongodb_version }} multiverse"
+    state: present
+    filename: mongodb-org-{{ mongodb_version }}
+  when: is_debian
+
+- name: Import MongoDB GPG key (Debian)
+  ansible.builtin.apt_key:
+    url: https://www.mongodb.org/static/pgp/server-{{ mongodb_version }}.asc
+    state: present
+  when: is_debian
+  
+- name: Install MongoDB packages (Debian)
+  ansible.builtin.apt:
+    name: mongodb-org
+    state: present
+    update_cache: yes
+  when: is_debian
+  
+# Common tasks
+- name: Disable default MongoDB service
+  ansible.builtin.service:
+    name: mongod
+    state: stopped
+    enabled: no
+  ignore_errors: true

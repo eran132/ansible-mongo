@@ -1,0 +1,32 @@
+---
+# OS Detection
+- name: Detect OS family
+  ansible.builtin.set_fact:
+    is_redhat: "{{ ansible_os_family == 'RedHat' }}"
+    is_debian: "{{ ansible_os_family == 'Debian' }}"
+
+# Include tasks by stage
+- name: Install MongoDB
+  include_tasks: install.yml
+
+- name: Configure SELinux
+  include_tasks: selinux.yml
+  when: is_redhat
+  
+- name: Setup directories
+  include_tasks: directories.yml
+
+- name: Configure services
+  include_tasks: services.yml
+
+- name: Initialize replica set
+  include_tasks: replica_set.yml
+
+- name: Configure authentication
+  include_tasks: auth.yml
+
+- name: Initialize database
+  include_tasks: db_init.yml
+
+- name: Verify configuration
+  include_tasks: verify.yml

@@ -1,0 +1,45 @@
+---
+- name: Verify replica set status
+  ansible.builtin.shell: |
+    mongosh admin --port {{ mongo_instances[0].port }} -u "{{ admin_user }}" -p "{{ admin_password }}" --eval 'rs.status()'
+  register: rs_verify
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Display replica set verification
+  ansible.builtin.debug:
+    msg: "Replica set status: {{ rs_verify.stdout | regex_search('PRIMARY|SECONDARY') }}"
+  when: rs_verify.rc == 0
+
+- name: Verify collections and indexes
+  ansible.builtin.shell: |
+    mongosh admin --port {{ mongo_instances[0].port }} -u "{{ admin_user }}" -p "{{ admin_password }}" --eval '
+      db = db.getSiblingDB("{{ database_name }}");
+      print("Collections: " + JSON.stringify(db.getCollectionNames()));
+      {% for collection in collections %}
+      print("{{ collection.name }} Indexes: " + JSON.stringify(db.{{ collection.name }}.getIndexes()));
+      {% endfor %}
+    '
+  register: verify
+  changed_when: false
+  no_log: true
+  
+- name: Display verification results
+  ansible.builtin.debug:
+    var: verify.stdout_lines
+  when: verify.rc == 0
+
+- name: Final MongoDB status check
+  ansible.builtin.shell: |
+    ps aux | grep mongo[d]
+    for svc in $(systemctl list-units --type=service | grep mongodb | awk '{print $1}'); do
+      echo "Service: $svc"
+      systemctl status $svc | grep Active
+    done
+  register: status
+  changed_when: false
+  
+- name: Display MongoDB status
+  ansible.builtin.debug:
+    var: status.stdout_lines

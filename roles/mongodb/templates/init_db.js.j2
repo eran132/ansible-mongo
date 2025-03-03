@@ -1,0 +1,23 @@
+// Connect to the orders database
+db = db.getSiblingDB('{{ database_name }}');
+
+// Create collections
+{% for collection in collections %}
+db.createCollection('{{ collection.name }}');
+{% endfor %}
+
+// Create TTL indexes for each collection
+{% for collection in collections %}
+db.{{ collection.name }}.createIndex({ "createdAt": 1 }, { expireAfterSeconds: {{ ttl_expiry_seconds }} });
+{% endfor %}
+
+// Insert sample data
+{% for collection in collections %}
+db.{{ collection.name }}.insertMany([
+  {% for item in collection.sample_data %}
+  { title: "{{ item.title }}", createdAt: {{ item.createdAt }} }{% if not loop.last %},{% endif %}
+  {% endfor %}
+]);
+{% endfor %}
+
+print("Collections created successfully with TTL indexes");

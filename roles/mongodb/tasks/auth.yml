@@ -1,0 +1,37 @@
+---
+- name: Create MongoDB keyfile for internal authentication
+  ansible.builtin.copy:
+    dest: /etc/mongodb/keyfile
+    content: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits length=756') }}"
+    owner: mongod
+    group: mongod
+    mode: '0400'
+    force: no
+
+- name: Create admin user initialization script
+  ansible.builtin.template:
+    src: init_admin.js.j2
+    dest: /tmp/init_admin.js
+    mode: '0644'
+
+- name: Create admin user
+  ansible.builtin.shell: |
+    mongosh admin --port {{ mongo_instances[0].port }} --eval "db.getUser('{{ admin_user }}')" 2>/dev/null || mongosh --port {{ mongo_instances[0].port }} /tmp/init_admin.js
+  register: admin_result
+  changed_when: "'Admin user created successfully' in admin_result.stdout"
+  failed_when: false
+
+- name: Update service files with auth
+  ansible.builtin.template:
+    src: mongodb_service.j2
+    dest: "/etc/systemd/system/mongodb{{ item.id }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ mongo_instances }}"
+  vars:
+    auth_enabled: true
+  notify:
+    - reload systemd
+    - restart mongodb
+  when: admin_result.changed

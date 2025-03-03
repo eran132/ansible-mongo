@@ -1,0 +1,14 @@
+---
+- hosts: ec2
+  become: yes
+  gather_facts: yes
+  vars_files:
+    - group_vars/all/vault.yml
+    - group_vars/all.yml
+
+  pre_tasks:
+    - name: Include validation tasks
+      include_tasks: tasks/validate.yml
+
+  roles:
+    - mongodb

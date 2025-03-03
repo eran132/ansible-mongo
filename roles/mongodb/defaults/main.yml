@@ -1,0 +1,23 @@
+---
+mongodb_version: "8.0"
+replica_set_name: "rs0"
+mongo_bind_ip: "0.0.0.0"
+database_name: "orders"
+collections:
+  - name: "MOVIES"
+    sample_data:
+      - { title: "Movie1", createdAt: "new Date()" }
+      - { title: "Movie2", createdAt: "new Date()" }
+  - name: "BOOKS"
+    sample_data:
+      - { title: "Book1", createdAt: "new Date()" }
+      - { title: "Book2", createdAt: "new Date()" }
+  - name: "GAMES"
+    sample_data:
+      - { title: "Game1", createdAt: "new Date()" }
+      - { title: "Game2", createdAt: "new Date()" }
+ttl_expiry_seconds: 86400  # 24 hours
+mongo_instances:
+  - { id: "1", port: 27017, dbpath: "/var/lib/mongodb/data1", logpath: "/var/log/mongodb/mongod1.log", priority: 2 }
+  - { id: "2", port: 27018, dbpath: "/var/lib/mongodb/data2", logpath: "/var/log/mongodb/mongod2.log", priority: 1 }
+  - { id: "3", port: 27019, dbpath: "/var/lib/mongodb/data3", logpath: "/var/log/mongodb/mongod3.log", priority: 1 }

@@ -1,0 +1,10 @@
+---
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: restart mongodb
+  ansible.builtin.systemd:
+    name: "mongodb{{ item }}"
+    state: restarted
+  loop: "{{ mongo_instances | map(attribute='id') | list }}"

@@ -1,0 +1,26 @@
+---
+- name: Create MongoDB data directories
+  ansible.builtin.file:
+    path: "{{ item.dbpath }}"
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: '0755'
+  loop: "{{ mongo_instances }}"
+    
+- name: Create log directories
+  ansible.builtin.file:
+    path: "{{ item.logpath | dirname }}"
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: '0755'
+  loop: "{{ mongo_instances }}"
+
+- name: Create keyfile directory
+  ansible.builtin.file:
+    path: "/etc/mongodb"
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: '0755'

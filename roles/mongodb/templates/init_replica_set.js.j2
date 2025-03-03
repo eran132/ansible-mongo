@@ -1,0 +1,9 @@
+rs.initiate({
+  _id: "{{ replica_set_name }}",
+  members: [
+    {% for instance in mongo_instances %}
+    {_id: {{ loop.index0 }}, host: "localhost:{{ instance.port }}", priority: {{ instance.priority }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+})
+print("Replica set initialization complete")

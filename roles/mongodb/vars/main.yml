@@ -1,0 +1,4 @@
+---
+# Any role-specific variables (internal)
+mongo_data_root: "/var/lib/mongodb"
+mongo_log_root: "/var/log/mongodb"

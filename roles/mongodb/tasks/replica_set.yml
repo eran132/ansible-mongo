@@ -1,0 +1,36 @@
+---
+- name: Wait for MongoDB to start
+  ansible.builtin.wait_for:
+    port: "{{ item.port }}"
+    timeout: 30
+  loop: "{{ mongo_instances }}"
+    
+- name: Create replica set initialization script
+  ansible.builtin.template:
+    src: init_replica_set.js.j2
+    dest: /tmp/init_replica_set.js
+    mode: '0644'
+
+- name: Initialize replica set
+  ansible.builtin.shell: |
+    mongosh --port {{ mongo_instances[0].port }} --eval "rs.status().ok" 2>/dev/null || mongosh --port {{ mongo_instances[0].port }} /tmp/init_replica_set.js
+  register: rs_init
+  changed_when: "'Replica set initialization complete' in rs_init.stdout"
+  failed_when: false
+    
+- name: Wait for replica set to initialize
+  ansible.builtin.pause:
+    seconds: 10
+  when: rs_init.changed
+
+- name: Check replica set status
+  ansible.builtin.shell: |
+    mongosh --port {{ mongo_instances[0].port }} --eval "rs.status()"
+  register: rs_status
+  changed_when: false
+  failed_when: false
+
+- name: Display replica set status
+  ansible.builtin.debug:
+    var: rs_status.stdout_lines
+  when: rs_status.rc == 0

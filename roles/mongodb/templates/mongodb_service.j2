@@ -1,0 +1,21 @@
+[Unit]
+Description=MongoDB Database Server {{ item.id }}
+After=network.target
+
+[Service]
+User=mongod
+Group=mongod
+ExecStart=/usr/bin/mongod --replSet {{ replica_set_name }} --port {{ item.port }} --dbpath {{ item.dbpath }} --logpath {{ item.logpath }} --bind_ip {{ mongo_bind_ip }}{% if auth_enabled %} --auth --keyFile=/etc/mongodb/keyfile{% endif %}
+PIDFile=/var/run/mongodb/mongod-{{ item.port }}.pid
+LimitFSIZE=infinity
+LimitCPU=infinity
+LimitAS=infinity
+LimitNOFILE=64000
+LimitNPROC=64000
+LimitMEMLOCK=infinity
+TasksMax=infinity
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

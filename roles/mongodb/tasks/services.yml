@@ -1,0 +1,24 @@
+---
+- name: Create systemd service files for MongoDB instances
+  ansible.builtin.template:
+    src: mongodb_service.j2
+    dest: "/etc/systemd/system/mongodb{{ item.id }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ mongo_instances }}"
+  vars:
+    auth_enabled: false
+  register: service_files
+      
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  when: service_files is changed
+    
+- name: Start MongoDB services
+  ansible.builtin.systemd:
+    name: "mongodb{{ item.id }}"
+    state: started
+    enabled: yes
+  loop: "{{ mongo_instances }}"

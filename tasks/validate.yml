@@ -1,0 +1,22 @@
+---
+- name: Validate MongoDB version
+  ansible.builtin.assert:
+    that:
+      - mongodb_version is defined
+      - mongodb_version | string | regex_search('^\d+\.\d+$')
+    fail_msg: "MongoDB version must be in the format X.Y (e.g., 8.0)"
+
+- name: Validate credentials
+  ansible.builtin.assert:
+    that:
+      - admin_user is defined and admin_user != ""
+      - admin_password is defined and admin_password != ""
+    fail_msg: "Admin credentials must be provided"
+
+- name: Validate database settings
+  ansible.builtin.assert:
+    that:
+      - database_name is defined and database_name != ""
+      - collections | length > 0
+      - ttl_expiry_seconds | int > 0
+    fail_msg: "Database settings are invalid"

@@ -1,0 +1,23 @@
+---
+- name: Create database initialization script
+  ansible.builtin.template:
+    src: init_db.js.j2
+    dest: /tmp/init_db.js
+    mode: '0644'
+
+- name: Check if orders database exists
+  ansible.builtin.shell: |
+    mongosh admin --port {{ mongo_instances[0].port }} -u "{{ admin_user }}" -p "{{ admin_password }}" --eval "db.getSiblingDB('{{ database_name }}').getCollectionNames().length > 0" 2>/dev/null | grep -q true || echo "notfound"
+  register: db_check
+  changed_when: false
+  failed_when: false
+  no_log: true  # Hide output containing password
+
+- name: Initialize database and collections
+  ansible.builtin.shell: |
+    mongosh admin --port {{ mongo_instances[0].port }} -u "{{ admin_user }}" -p "{{ admin_password }}" --authenticationDatabase admin /tmp/init_db.js
+  register: db_init
+  changed_when: "'Collections created successfully' in db_init.stdout"
+  failed_when: db_init.rc != 0
+  when: db_check.stdout == "notfound"
+  no_log: true  # Hide output containing password

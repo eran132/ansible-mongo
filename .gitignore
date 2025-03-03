@@ -3,3 +3,4 @@ inventory.ini
 *.pem
 **/vault_password_file
 *.retry
+inventory.ini
