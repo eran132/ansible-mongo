@@ -1,0 +1,75 @@
+---
+- name: Install mongos
+  ansible.builtin.yum:
+    name: mongodb-org-mongos
+    state: present
+
+- name: Create config server directories
+  ansible.builtin.file:
+    path: "/var/lib/mongodb/configdb"
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: '0755'
+
+- name: Copy config server configuration template
+  ansible.builtin.template:
+    src: mongod_configsrv.conf.j2
+    dest: /etc/mongodb/mongod_configsrv.conf
+    owner: mongod
+    group: mongod
+    mode: '0644'
+
+- name: Copy config server systemd service file
+  ansible.builtin.template:
+    src: mongodb_configsrv.service.j2
+    dest: /etc/systemd/system/mongodb_configsrv.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Start config server
+  ansible.builtin.systemd:
+    name: mongodb_configsrv.service
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Copy sharding initialization script
+  ansible.builtin.template:
+    src: init_sharding.js.j2
+    dest: /tmp/init_sharding.js
+    mode: '0644'
+
+- name: Initialize sharding
+  ansible.builtin.shell: >
+    mongosh admin --port {{ hostvars['mongodb-1']['mongo_port'] }} 
+    -u "{{ admin_user }}" -p "{{ admin_password }}" 
+    --eval "sh.status()" | grep -q "sharding version" || 
+    mongosh admin --port {{ hostvars['mongodb-1']['mongo_port'] }} 
+    -u "{{ admin_user }}" -p "{{ admin_password }}" /tmp/init_sharding.js
+  register: shard_init_result
+  changed_when: "'Sharding already enabled' not in shard_init_result.stdout"
+  failed_when: false
+
+- name: Enable sharding for the orders database
+  ansible.builtin.shell: >
+    mongosh admin --port {{ hostvars['mongodb-1']['mongo_port'] }} 
+    -u "{{ admin_user }}" -p "{{ admin_password }}" 
+    --eval 'sh.enableSharding("{{ database_name }}")'
+  register: enable_sharding_result
+  changed_when: "'already enabled' not in enable_sharding_result.stdout"
+  failed_when: false
+
+- name: Shard collections
+  ansible.builtin.shell: >
+    mongosh admin --port {{ hostvars['mongodb-1']['mongo_port'] }} 
+    -u "{{ admin_user }}" -p "{{ admin_password }}" 
+    --eval 'sh.shardCollection("{{ database_name }}.{{ item }}", { "_id": "hashed" })'
+  loop:
+    - "MOVIES"
+    - "BOOKS"
+    - "GAMES"
+  register: shard_coll_result
+  changed_when: "'already sharded' not in shard_coll_result.stdout"
+  failed_when: false

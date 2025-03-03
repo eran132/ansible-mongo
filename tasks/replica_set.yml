@@ -1,0 +1,34 @@
+---
+- name: Wait for MongoDB instances to be ready
+  ansible.builtin.wait_for:
+    port: "{{ item }}"
+    state: started
+    timeout: 30
+  loop:
+    - 27017
+    - 27018
+    - 27019
+
+- name: Copy replica set initialization script
+  ansible.builtin.template:
+    src: init_replica_set.js.j2
+    dest: /tmp/init_replica_set.js
+    mode: '0644'
+  vars:
+    rs_members:
+      - { id: 0, host: "localhost:27017", priority: 2 }
+      - { id: 1, host: "localhost:27018", priority: 1 }
+      - { id: 2, host: "localhost:27019", priority: 1 }
+
+- name: Initialize replica set
+  ansible.builtin.shell: >
+    mongosh --port 27017 --eval "rs.status()" | grep -q "\"ok\" : 1" || 
+    mongosh --port 27017 /tmp/init_replica_set.js
+  register: init_result
+  changed_when: "'already initialized' not in init_result.stdout"
+  failed_when: false
+
+- name: Wait for replica set to initialize
+  ansible.builtin.pause:
+    seconds: 10
+  when: init_result.changed

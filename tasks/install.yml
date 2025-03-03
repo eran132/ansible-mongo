@@ -1,0 +1,56 @@
+- name: Update package cache
+  ansible.builtin.shell: dnf clean all && dnf makecache
+  changed_when: false
+
+- name: Add MongoDB repo file
+  ansible.builtin.copy:
+    dest: /etc/yum.repos.d/mongodb-org-8.0.repo
+    content: |
+      [mongodb-org-8.0]
+      name=MongoDB Repository
+      baseurl=https://repo.mongodb.org/yum/redhat/8/mongodb-org/8.0/x86_64/
+      gpgcheck=1
+      enabled=1
+      gpgkey=https://www.mongodb.org/static/pgp/server-8.0.asc
+
+- name: Import MongoDB GPG key
+  ansible.builtin.shell: rpm --import https://www.mongodb.org/static/pgp/server-8.0.asc
+  changed_when: false
+
+- name: Install MongoDB packages
+  ansible.builtin.shell: dnf install -y mongodb-org
+  register: install_result
+  changed_when: "'Nothing to do' not in install_result.stdout"
+
+- name: Disable default MongoDB service
+  ansible.builtin.shell: systemctl disable mongod --now
+  ignore_errors: true
+  changed_when: false
+
+- name: Create MongoDB data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: '0755'
+  loop:
+    - "/var/lib/mongodb/data1"
+    - "/var/lib/mongodb/data2" 
+    - "/var/lib/mongodb/data3"
+
+- name: Create MongoDB log directories
+  ansible.builtin.file:
+    path: "/var/log/mongodb"
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: '0755'
+
+- name: Create MongoDB config directory
+  ansible.builtin.file:
+    path: "/etc/mongodb"
+    state: directory
+    owner: mongod
+    group: mongod
+    mode: '0755'

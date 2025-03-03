@@ -1,0 +1,9 @@
+admin = db.getSiblingDB("admin");
+admin.createUser({
+  user: "{{ admin_user }}",
+  pwd: "{{ admin_password }}",
+  roles: [
+    { role: "root", db: "admin" }
+  ]
+});
+print("Admin user created successfully");

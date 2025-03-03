@@ -1,0 +1,66 @@
+---
+- name: Copy database initialization script
+  ansible.builtin.template:
+    src: init_db.js.j2
+    dest: /tmp/init_db.js
+    mode: '0644'
+
+- name: Get primary port from previous task
+  ansible.builtin.set_fact:
+    mongo_primary_port: "{{ primary_port | default('27017') }}"
+    admin_user: "Administrator"
+    admin_password: "admin123"
+    database_name: "orders"
+    ttl_expiry_seconds: 86400  # 24 hours
+
+- name: Check if orders database exists
+  ansible.builtin.shell: >
+    mongosh admin --port {{ mongo_primary_port }} 
+    -u "{{ admin_user }}" -p "{{ admin_password }}" 
+    --eval "db.getSiblingDB('{{ database_name }}').MOVIES.stats()" | grep -q "ok" || echo "notfound"
+  register: db_check
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+
+- name: Debug database check
+  ansible.builtin.debug:
+    msg: 
+      - "Check output: {{ db_check.stdout }}"
+      - "Check rc: {{ db_check.rc }}"
+      - "Will run init: {{ db_check.stdout == 'notfound' or db_check.rc != 0 }}"
+
+- name: Initialize database and collections
+  ansible.builtin.command: >
+    mongosh admin --port {{ mongo_primary_port }} 
+    -u "{{ admin_user }}" -p "{{ admin_password }}" 
+    --authenticationDatabase admin /tmp/init_db.js
+  register: db_init_result
+  changed_when: "'Collections created successfully' in db_init_result.stdout"
+  failed_when: false
+  when: db_check.stdout == "notfound" or db_check.rc != 0
+
+- name: Ensure database exists with test document
+  ansible.builtin.shell: >
+    mongosh admin --port {{ mongo_primary_port }} 
+    -u "{{ admin_user }}" -p "{{ admin_password }}" 
+    --authenticationDatabase admin
+    --eval 'db.getSiblingDB("orders").MOVIES.insertOne({title:"Test", createdAt:new Date()})'
+  when: db_init_result is defined and db_init_result.changed
+  register: insert_result
+  changed_when: true
+  failed_when: false
+
+- name: Create TTL indexes
+  ansible.builtin.shell: >
+    mongosh {{ database_name }} --port {{ mongo_primary_port }} 
+    -u "{{ admin_user }}" -p "{{ admin_password }}" 
+    --authenticationDatabase admin
+    --eval 'db.{{ item }}.createIndex({ "createdAt": 1 }, { expireAfterSeconds: {{ ttl_expiry_seconds }} })'
+  loop:
+    - "MOVIES"
+    - "BOOKS"
+    - "GAMES"
+  register: ttl_result
+  changed_when: "'already exists' not in ttl_result.stdout"
+  failed_when: false

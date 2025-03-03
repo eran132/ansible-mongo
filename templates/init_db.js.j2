@@ -1,0 +1,19 @@
+// Connect to the orders database
+db = db.getSiblingDB('orders');
+
+// Create collections
+db.createCollection('MOVIES');
+db.createCollection('BOOKS');
+db.createCollection('GAMES');
+
+// Create TTL indexes for each collection (24 hours)
+db.MOVIES.createIndex({ "createdAt": 1 }, { expireAfterSeconds: 86400 });
+db.BOOKS.createIndex({ "createdAt": 1 }, { expireAfterSeconds: 86400 });
+db.GAMES.createIndex({ "createdAt": 1 }, { expireAfterSeconds: 86400 });
+
+// Insert test documents to ensure database persistence
+db.MOVIES.insertOne({title: "Test Movie", createdAt: new Date()});
+db.BOOKS.insertOne({title: "Test Book", createdAt: new Date()});
+db.GAMES.insertOne({title: "Test Game", createdAt: new Date()});
+
+print("Collections created successfully with TTL indexes");

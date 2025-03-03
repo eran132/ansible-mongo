@@ -1,0 +1,6 @@
+replica_member_id: 1
+mongo_hostname: "mongodb-1"
+mongo_port: 27017
+mongo_data_path: "/var/lib/mongodb/data1"
+mongo_log_path: "/var/log/mongodb/mongod1.log"
+mongo_config_path: "/etc/mongodb/mongod1.conf"

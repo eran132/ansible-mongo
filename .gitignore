@@ -1,0 +1,5 @@
+# Ignore sensitive files
+inventory.ini
+*.pem
+**/vault_password_file
+*.retry

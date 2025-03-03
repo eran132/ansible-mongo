@@ -1,0 +1,26 @@
+---
+- name: Create systemd service files for MongoDB instances
+  ansible.builtin.template:
+    src: mongodb.service.j2
+    dest: "/etc/systemd/system/mongodb{{ item.id }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { id: "1", port: 27017, mongo_data_path: "/var/lib/mongodb/data1", config: "/etc/mongodb/mongod1.conf" }
+    - { id: "2", port: 27018, mongo_data_path: "/var/lib/mongodb/data2", config: "/etc/mongodb/mongod2.conf" }
+    - { id: "3", port: 27019, mongo_data_path: "/var/lib/mongodb/data3", config: "/etc/mongodb/mongod3.conf" }
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Start and enable MongoDB services
+  ansible.builtin.systemd:
+    name: "mongodb{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - "1"
+    - "2" 
+    - "3"

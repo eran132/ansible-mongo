@@ -1,0 +1,63 @@
+---
+- name: Create MongoDB keyfile for internal authentication
+  ansible.builtin.copy:
+    content: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=756') }}"
+    dest: /etc/mongodb/keyfile
+    owner: mongod
+    group: mongod
+    mode: '0400'
+    force: no  # Don't overwrite if exists
+
+- name: Copy authentication initialization script
+  ansible.builtin.template:
+    src: init_auth.js.j2
+    dest: /tmp/init_auth.js
+    mode: '0644'
+
+- name: Find primary node
+  ansible.builtin.shell: mongosh --port 27017 --eval "rs.status().members.find(m => m.state === 1).name" | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}:[0-9]\+'
+  register: primary_node
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+
+- name: Extract primary port
+  ansible.builtin.set_fact:
+    primary_port: "{{ primary_node.stdout.split(':')[1] | default('27017') }}"
+
+- name: Check if admin user exists
+  ansible.builtin.shell: mongosh admin --port {{ primary_port }} --eval "db.getUser('Administrator')" | grep -q "Administrator" || echo "notfound"
+  register: admin_user_check
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+
+- name: Initialize admin user
+  ansible.builtin.command: mongosh --port {{ primary_port }} /tmp/init_auth.js
+  register: init_admin_result
+  failed_when: init_admin_result.rc != 0 and "User \"Administrator@admin\" already exists" not in init_admin_result.stderr
+  changed_when: init_admin_result.rc == 0
+  when: admin_user_check.stdout == "notfound"
+
+- name: Update MongoDB configuration to enable auth
+  ansible.builtin.template:
+    src: mongod.conf.j2
+    dest: "/etc/mongodb/mongod{{ item.id }}.conf"
+    owner: mongod
+    group: mongod
+    mode: "0644"
+  loop:
+    - { id: "1", port: 27017, mongo_data_path: "/var/lib/mongodb/data1", logpath: "/var/log/mongodb/mongod1.log" }
+    - { id: "2", port: 27018, mongo_data_path: "/var/lib/mongodb/data2", logpath: "/var/log/mongodb/mongod2.log" }
+    - { id: "3", port: 27019, mongo_data_path: "/var/lib/mongodb/data3", logpath: "/var/log/mongodb/mongod3.log" }
+  vars:
+    enable_auth: true
+
+- name: Restart MongoDB instances after enabling auth
+  ansible.builtin.systemd:
+    name: "mongodb{{ item }}"
+    state: restarted
+  loop:
+    - "1"
+    - "2"
+    - "3"

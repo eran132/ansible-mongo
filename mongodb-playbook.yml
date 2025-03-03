@@ -1,0 +1,28 @@
+---
+- name: Deploy MongoDB ReplicaSet
+  hosts: ec2  # This should match your inventory name
+  become: yes
+  tasks:
+    - name: Include installation tasks
+      include_tasks: tasks/install.yml
+      
+    - name: Include SELinux configuration
+      include_tasks: tasks/selinux.yml
+      
+    - name: Include configuration tasks
+      include_tasks: tasks/configure.yml
+
+    - name: Include service configuration
+      include_tasks: tasks/services.yml
+    
+    - name: Troubleshoot MongoDB services
+      include_tasks: tasks/troubleshoot.yml
+      
+    - name: Include replica set initialization
+      include_tasks: tasks/replica_set.yml
+      
+    - name: Include authentication setup
+      include_tasks: tasks/auth.yml
+      
+    - name: Include database initialization
+      include_tasks: tasks/db_init.yml

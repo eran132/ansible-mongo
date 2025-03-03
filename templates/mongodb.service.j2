@@ -1,0 +1,31 @@
+[Unit]
+Description=MongoDB Database Server {{ item.id }}
+Documentation=https://docs.mongodb.org/manual
+After=network.target
+
+[Service]
+User=mongod
+Group=mongod
+ExecStart=/usr/bin/mongod --config {{ item.config }}
+PIDFile=/var/run/mongodb/mongod-{{ item.port }}.pid
+# File size
+LimitFSIZE=infinity
+# CPU time
+LimitCPU=infinity
+# Virtual memory size
+LimitAS=infinity
+# Open files
+LimitNOFILE=64000
+# Processes/threads
+LimitNPROC=64000
+# Locked memory
+LimitMEMLOCK=infinity
+# Total threads (user+kernel)
+TasksMax=infinity
+TasksAccounting=false
+# Restart service after 10 seconds if mongod crashes
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

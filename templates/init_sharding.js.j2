@@ -1,0 +1,7 @@
+// Add replica set as a shard
+sh.addShard("{{ replica_set_name }}/localhost:{{ hostvars['mongodb-1']['mongo_port'] }},localhost:{{ hostvars['mongodb-2']['mongo_port'] }},localhost:{{ hostvars['mongodb-3']['mongo_port'] }}");
+
+// Enable sharding for database
+sh.enableSharding("{{ database_name }}");
+
+print("Sharding initialized successfully");

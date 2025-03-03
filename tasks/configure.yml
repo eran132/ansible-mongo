@@ -1,0 +1,11 @@
+- name: Deploy MongoDB configuration files for each instance
+  ansible.builtin.template:
+    src: mongod.conf.j2
+    dest: "/etc/mongodb/mongod{{ item.id }}.conf"
+    owner: mongod
+    group: mongod
+    mode: "0644"
+  loop:
+    - { id: "1", port: 27017, mongo_data_path: "/var/lib/mongodb/data1", logpath: "/var/log/mongodb/mongod1.log" }
+    - { id: "2", port: 27018, mongo_data_path: "/var/lib/mongodb/data2", logpath: "/var/log/mongodb/mongod2.log" }
+    - { id: "3", port: 27019, mongo_data_path: "/var/lib/mongodb/data3", logpath: "/var/log/mongodb/mongod3.log" }

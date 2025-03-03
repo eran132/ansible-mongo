@@ -1,0 +1,10 @@
+rs.initiate({
+  _id: "rs0",
+  members: [
+    {% for member in rs_members %}
+    { _id: {{ member.id }}, host: "{{ member.host }}", priority: {{ member.priority | default(1) }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+})
+
+print("Replica set initialization complete")

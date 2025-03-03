@@ -1,0 +1,6 @@
+replica_member_id: 3
+mongo_hostname: "mongodb-3"
+mongo_port: 27019
+mongo_data_path: "/var/lib/mongodb/data3"
+mongo_log_path: "/var/log/mongodb/mongod3.log"
+mongo_config_path: "/etc/mongodb/mongod3.conf"

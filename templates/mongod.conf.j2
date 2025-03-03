@@ -1,0 +1,38 @@
+# MongoDB configuration file for MongoDB Community Edition v8.x
+
+# Where and how to store data
+storage:
+  dbPath: {{ item.mongo_data_path }}
+  wiredTiger:
+    engineConfig:
+      cacheSizeGB: 1
+
+# Network interfaces
+net:
+  port: {{ item.port }}
+  bindIp: 0.0.0.0
+
+# Replication settings
+replication:
+  replSetName: rs0
+
+# Process management
+processManagement:
+  fork: false  # Must be false for systemd management
+  pidFilePath: /var/run/mongodb/mongod-{{ item.port }}.pid
+  timeZoneInfo: /usr/share/zoneinfo
+
+# Log settings
+systemLog:
+  destination: file
+  logAppend: true
+  path: {{ item.logpath }}
+
+# Security settings
+security:
+{% if enable_auth | default(false) %}
+  authorization: enabled
+  keyFile: /etc/mongodb/keyfile
+{% else %}
+  authorization: disabled
+{% endif %}

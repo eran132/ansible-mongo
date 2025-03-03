@@ -1,0 +1,9 @@
+mongodb_version: "8.0"
+replica_set_name: "rs0"
+mongo_bind_ip: "0.0.0.0"
+mongo_port: 27018  # Custom port per requirements
+auth_enabled: true
+admin_user: "Administrator"
+admin_password: "admin123"
+database_name: "orders"
+ttl_expiry_seconds: 86400  # 24 hours

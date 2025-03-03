@@ -1,0 +1,111 @@
+---
+- name: Set SELinux file contexts for MongoDB data directories
+  ansible.builtin.command: semanage fcontext -a -t mongod_var_lib_t "{{ item }}(/.*)?"
+  loop:
+    - "/var/lib/mongodb/data1"
+    - "/var/lib/mongodb/data2"
+    - "/var/lib/mongodb/data3"
+  changed_when: true
+  failed_when: false
+
+- name: Set SELinux file context for MongoDB log directory
+  ansible.builtin.command: semanage fcontext -a -t mongod_log_t "/var/log/mongodb(/.*)?"
+  changed_when: true
+  failed_when: false
+
+- name: Set SELinux file context for MongoDB config directory
+  ansible.builtin.command: semanage fcontext -a -t mongod_conf_t "/etc/mongodb(/.*)?"
+  changed_when: true
+  failed_when: false
+
+- name: Apply SELinux file contexts
+  ansible.builtin.command: restorecon -Rv "{{ item }}"
+  loop:
+    - "/var/lib/mongodb"
+    - "/var/log/mongodb"
+    - "/etc/mongodb"
+  changed_when: true
+
+- name: Allow MongoDB to use custom ports
+  ansible.builtin.command: semanage port -a -t mongod_port_t -p tcp {{ item }} || semanage port -m -t mongod_port_t -p tcp {{ item }}
+  loop:
+    - "27017"
+    - "27018"
+    - "27019"
+  changed_when: true
+  failed_when: false
+
+- name: Set SELinux boolean to allow MongoDB network access
+  ansible.builtin.command: setsebool -P mongod_can_network_connect 1
+  changed_when: true
+  failed_when: false
+
+- name: Create custom MongoDB SELinux policy
+  ansible.builtin.copy:
+    dest: /tmp/mongodb_custom.te
+    content: |
+      module mongodb_custom 1.0;
+
+      require {
+        type mongod_t;
+        type cgroup_t;
+        type proc_net_t;
+        type proc_t;
+        class file { getattr open read };
+        class dir search;
+      }
+
+      #============= mongod_t ==============
+      allow mongod_t cgroup_t:dir search;
+      allow mongod_t cgroup_t:file { getattr open read };
+      allow mongod_t proc_net_t:file { getattr open read };
+      allow mongod_t proc_t:dir search;
+      allow mongod_t proc_t:file { getattr open read };
+  changed_when: true
+
+- name: Compile and install custom MongoDB SELinux policy
+  ansible.builtin.shell: |
+    cd /tmp
+    checkmodule -M -m -o mongodb_custom.mod mongodb_custom.te
+    semodule_package -o mongodb_custom.pp -m mongodb_custom.mod
+    semodule -i mongodb_custom.pp
+  changed_when: true
+
+- name: Create SELinux policy from audit logs
+  ansible.builtin.shell: |
+    grep mongod /var/log/audit/audit.log | audit2allow -M mongodb_policy
+    semodule -i mongodb_policy.pp
+  args:
+    chdir: /tmp
+  register: selinux_policy_result
+  changed_when: true
+  failed_when: false
+
+- name: Create FTDC policy with simpler approach
+  ansible.builtin.shell: |
+    echo 'module ftdc_policy 1.0;
+    require {
+        type mongod_t;
+        type proc_sys_t;
+        class dir search;
+        class file { open read getattr };
+    }
+    #============= mongod_t ==============
+    allow mongod_t proc_sys_t:dir search;
+    allow mongod_t proc_sys_t:file { getattr open read };' > /tmp/ftdc_policy.te
+    checkmodule -M -m -o ftdc_policy.mod /tmp/ftdc_policy.te || true
+    semodule_package -o ftdc_policy.pp -m ftdc_policy.mod || true
+    semodule -i ftdc_policy.pp || true
+  changed_when: true
+  failed_when: false
+
+- name: Set SELinux to permissive mode for MongoDB domain
+  ansible.builtin.shell: |
+    semanage permissive -a mongod_t
+  changed_when: true
+  failed_when: false
+
+- name: Ensure SELinux is in enforcing mode
+  ansible.builtin.command: setenforce 1
+  changed_when: false
+  failed_when: false
